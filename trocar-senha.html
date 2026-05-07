@@ -16,22 +16,9 @@
       justify-content: center;
       padding: 24px 16px;
     }
-    .logo {
-      font-size: 48px;
-      margin-bottom: 8px;
-    }
-    .title {
-      color: #fff;
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-    .subtitle {
-      color: rgba(255,255,255,0.85);
-      font-size: 14px;
-      margin-bottom: 32px;
-      text-align: center;
-    }
+    .logo { font-size: 48px; margin-bottom: 8px; }
+    .title { color: #fff; font-size: 24px; font-weight: bold; margin-bottom: 4px; }
+    .subtitle { color: rgba(255,255,255,0.85); font-size: 14px; margin-bottom: 32px; text-align: center; }
     .card {
       background: #fff;
       border-radius: 16px;
@@ -40,43 +27,37 @@
       max-width: 420px;
       box-shadow: 0 4px 24px rgba(0,0,0,0.2);
     }
-    .card h2 {
-      color: #cf240a;
-      font-size: 20px;
-      margin-bottom: 6px;
-    }
-    .card p {
-      color: #555;
-      font-size: 14px;
-      margin-bottom: 24px;
-    }
-    label {
-      display: block;
-      color: #333;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
+    .card h2 { color: #cf240a; font-size: 20px; margin-bottom: 6px; }
+    .card p { color: #555; font-size: 14px; margin-bottom: 24px; }
+    label { display: block; color: #333; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .input-wrap { position: relative; margin-bottom: 6px; }
     input {
       width: 100%;
       height: 52px;
       border: 1.5px solid #ddd;
       border-radius: 10px;
-      padding: 0 16px;
+      padding: 0 44px 0 16px;
       font-size: 16px;
       color: #222;
       background: #fafafa;
-      margin-bottom: 18px;
       outline: none;
       transition: border-color 0.2s;
     }
     input:focus { border-color: #cf240a; background: #fff; }
-    .suffix {
-      color: #cf240a;
-      font-size: 13px;
-      margin-top: -14px;
-      margin-bottom: 18px;
+    .eye-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #888;
+      padding: 4px;
     }
+    .suffix { color: #cf240a; font-size: 13px; margin-bottom: 18px; margin-top: 4px; }
+    .field-gap { margin-bottom: 18px; }
     button[type="submit"] {
       width: 100%;
       height: 52px;
@@ -102,20 +83,8 @@
     }
     .msg.success { background: #e8f5e9; color: #2e7d32; display: block; }
     .msg.error   { background: #ffebee; color: #c62828; display: block; }
-    .voltar {
-      display: block;
-      text-align: center;
-      margin-top: 20px;
-      color: #cf240a;
-      font-size: 14px;
-      text-decoration: none;
-    }
-    .footer {
-      color: rgba(255,255,255,0.6);
-      font-size: 12px;
-      margin-top: 32px;
-      text-align: center;
-    }
+    .voltar { display: block; text-align: center; margin-top: 20px; color: #cf240a; font-size: 14px; text-decoration: none; }
+    .footer { color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 32px; text-align: center; }
   </style>
 </head>
 <body>
@@ -129,21 +98,29 @@
 
     <form id="form">
       <label>Usuário</label>
-      <input type="text" id="usuario" name="usuario" placeholder="seu.nome" autocapitalize="none" autocorrect="off" required>
-      <div class="suffix">@claudino.net</div>
+      <div class="input-wrap">
+        <input type="text" id="usuario" placeholder="seu.nome" autocapitalize="none" autocorrect="off" required>
+      </div>
+      <div class="suffix field-gap">@claudino.net</div>
 
       <label>Nova Senha</label>
-      <input type="password" id="novaSenha" name="nova_senha" placeholder="••••••••" required minlength="6">
+      <div class="input-wrap field-gap">
+        <input type="password" id="novaSenha" placeholder="••••••••" required minlength="6">
+        <button type="button" class="eye-btn" onclick="toggleSenha('novaSenha', this)">👁️</button>
+      </div>
 
       <label>Confirme a Nova Senha</label>
-      <input type="password" id="confirmarSenha" name="confirmar_senha" placeholder="••••••••" required minlength="6">
+      <div class="input-wrap field-gap">
+        <input type="password" id="confirmarSenha" placeholder="••••••••" required minlength="6">
+        <button type="button" class="eye-btn" onclick="toggleSenha('confirmarSenha', this)">👁️</button>
+      </div>
 
       <button type="submit" id="btnEnviar">SOLICITAR TROCA</button>
 
-      <div id="msgSucesso" class="msg success">
+      <div id="msgSucesso" class="msg success" style="display:none">
         ✅ Solicitação enviada! O administrador irá redefinir sua senha em breve.
       </div>
-      <div id="msgErro" class="msg error"></div>
+      <div id="msgErro" class="msg error" style="display:none"></div>
     </form>
 
     <a class="voltar" href="javascript:history.back()">← Voltar ao FalaQui</a>
@@ -154,10 +131,21 @@
   <script>
     // Preencher usuário se veio como parâmetro da URL
     const params = new URLSearchParams(window.location.search);
-    const user = params.get('user');
-    if (user) document.getElementById('usuario').value = user;
+    const userParam = params.get('user');
+    if (userParam) document.getElementById('usuario').value = userParam;
 
-    document.getElementById('form').addEventListener('submit', async function(e) {
+    function toggleSenha(id, btn) {
+      const input = document.getElementById(id);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
+    }
+
+    document.getElementById('form').addEventListener('submit', function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnEnviar');
       const usuario = document.getElementById('usuario').value.trim();
@@ -169,6 +157,11 @@
       msgErro.style.display = 'none';
       msgSucesso.style.display = 'none';
 
+      if (!usuario) {
+        msgErro.textContent = '❌ Informe seu usuário.';
+        msgErro.style.display = 'block';
+        return;
+      }
       if (nova !== confirmar) {
         msgErro.textContent = '❌ As senhas não coincidem. Tente novamente.';
         msgErro.style.display = 'block';
@@ -180,32 +173,25 @@
         return;
       }
 
-      btn.disabled = true;
-      btn.textContent = 'Enviando...';
+      // Enviar via mailto para o admin
+      const emailAdmin = 'rleitemartins@gmail.com';
+      const assunto = encodeURIComponent('[FalaQui] Troca de senha: ' + usuario + '@claudino.net');
+      const corpo = encodeURIComponent(
+        'Solicitação de troca de senha FalaQui\n\n' +
+        'Usuário: ' + usuario + '@claudino.net\n' +
+        'Nova senha solicitada: ' + nova + '\n\n' +
+        'Por favor processe esta solicitação no servidor.'
+      );
 
-      try {
-        // Enviar para Formspree (substitua YOUR_FORM_ID pelo ID real)
-        const resp = await fetch('https://formspree.io/f/xgvkyknv', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            usuario: usuario + '@claudino.net',
-            solicitacao: 'Troca de senha FalaQui',
-            _subject: '[FalaQui] Troca de senha: ' + usuario + '@claudino.net'
-          })
-        });
-        if (resp.ok) {
-          msgSucesso.style.display = 'block';
-          btn.textContent = 'ENVIADO ✓';
-        } else {
-          throw new Error('Erro no envio');
-        }
-      } catch(err) {
-        btn.disabled = false;
-        btn.textContent = 'SOLICITAR TROCA';
-        msgErro.textContent = '❌ Erro ao enviar. Tente novamente ou contate o suporte.';
-        msgErro.style.display = 'block';
-      }
+      // Abre o app de email com a solicitação preenchida
+      window.location.href = 'mailto:' + emailAdmin + '?subject=' + assunto + '&body=' + corpo;
+
+      // Mostrar mensagem de sucesso
+      setTimeout(function() {
+        msgSucesso.style.display = 'block';
+        btn.textContent = 'ENVIADO ✓';
+        btn.disabled = true;
+      }, 500);
     });
   </script>
 </body>
