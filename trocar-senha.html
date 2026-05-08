@@ -44,6 +44,7 @@
       transition: border-color 0.2s;
     }
     input:focus { border-color: #cf240a; background: #fff; }
+    input:disabled { background: #f0f0f0; color: #999; }
     .eye-btn {
       position: absolute;
       right: 12px;
@@ -73,6 +74,17 @@
     }
     button[type="submit"]:hover { background: #a81d08; }
     button[type="submit"]:disabled { background: #ccc; cursor: not-allowed; }
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .msg {
       display: none;
       border-radius: 10px;
@@ -94,7 +106,7 @@
 
   <div class="card">
     <h2>🔑 Trocar Senha</h2>
-    <p>Informe seu usuário e a nova senha desejada. O administrador processará sua solicitação em breve.</p>
+    <p>Informe seu usuário e escolha uma nova senha.</p>
 
     <form id="form">
       <label>Usuário</label>
@@ -115,10 +127,10 @@
         <button type="button" class="eye-btn" onclick="toggleSenha('confirmarSenha', this)">👁️</button>
       </div>
 
-      <button type="submit" id="btnEnviar">SOLICITAR TROCA</button>
+      <button type="submit" id="btnEnviar">SALVAR NOVA SENHA</button>
 
       <div id="msgSucesso" class="msg success" style="display:none">
-        ✅ Solicitação enviada! O administrador irá redefinir sua senha em breve.
+        ✅ Senha alterada com sucesso! Volte ao app e faça login com a nova senha.
       </div>
       <div id="msgErro" class="msg error" style="display:none"></div>
     </form>
@@ -129,10 +141,18 @@
   <div class="footer">FalaQui © Claudino.net</div>
 
   <script>
+    const BASE_URL = 'https://app.claudino.net/services';
+    const SVC_USER = 'cmd_ah_77851';
+    const SVC_PASS = 'qP19J9WhT9zcjgZPZBcYKNga5YR7PPWUPokgscz0trvHlY96J3';
+
     // Preencher usuário se veio como parâmetro da URL
     const params = new URLSearchParams(window.location.search);
     const userParam = params.get('user');
-    if (userParam) document.getElementById('usuario').value = userParam;
+    if (userParam) {
+      const campo = document.getElementById('usuario');
+      campo.value = userParam;
+      campo.disabled = true; // usuário vem do app, não deve ser editado
+    }
 
     function toggleSenha(id, btn) {
       const input = document.getElementById(id);
@@ -145,53 +165,79 @@
       }
     }
 
-    document.getElementById('form').addEventListener('submit', function(e) {
+    function mostrarErro(msg) {
+      const el = document.getElementById('msgErro');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function esconderMensagens() {
+      document.getElementById('msgErro').style.display = 'none';
+      document.getElementById('msgSucesso').style.display = 'none';
+    }
+
+    async function obterToken() {
+      const resp = await fetch(BASE_URL + '/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName: SVC_USER, password: SVC_PASS })
+      });
+      if (!resp.ok) throw new Error('Falha ao autenticar serviço');
+      const data = await resp.json();
+      if (!data.token) throw new Error('Token não recebido');
+      return data.token;
+    }
+
+    async function trocarSenha(token, userName, novaSenha) {
+      const resp = await fetch(BASE_URL + '/changepassword', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ userName: userName, password: novaSenha })
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.message || 'Erro ao trocar senha');
+      return data;
+    }
+
+    document.getElementById('form').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnEnviar');
       const usuario = document.getElementById('usuario').value.trim();
       const nova = document.getElementById('novaSenha').value;
       const confirmar = document.getElementById('confirmarSenha').value;
-      const msgErro = document.getElementById('msgErro');
-      const msgSucesso = document.getElementById('msgSucesso');
 
-      msgErro.style.display = 'none';
-      msgSucesso.style.display = 'none';
+      esconderMensagens();
 
-      if (!usuario) {
-        msgErro.textContent = '❌ Informe seu usuário.';
-        msgErro.style.display = 'block';
-        return;
+      if (!usuario) { mostrarErro('❌ Informe seu usuário.'); return; }
+      if (nova !== confirmar) { mostrarErro('❌ As senhas não coincidem. Tente novamente.'); return; }
+      if (nova.length < 6) { mostrarErro('❌ A senha deve ter pelo menos 6 caracteres.'); return; }
+
+      // Bloquear formulário e mostrar loading
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Aguarde...';
+
+      try {
+        const token = await obterToken();
+        await trocarSenha(token, usuario, nova);
+
+        document.getElementById('msgSucesso').style.display = 'block';
+        btn.textContent = 'SENHA ALTERADA ✓';
+
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'SALVAR NOVA SENHA';
+
+        if (err.message && err.message.toLowerCase().includes('network')) {
+          mostrarErro('❌ Erro de conexão. Verifique sua internet e tente novamente.');
+        } else if (err.message) {
+          mostrarErro('❌ ' + err.message);
+        } else {
+          mostrarErro('❌ Erro inesperado. Tente novamente.');
+        }
       }
-      if (nova !== confirmar) {
-        msgErro.textContent = '❌ As senhas não coincidem. Tente novamente.';
-        msgErro.style.display = 'block';
-        return;
-      }
-      if (nova.length < 6) {
-        msgErro.textContent = '❌ A senha deve ter pelo menos 6 caracteres.';
-        msgErro.style.display = 'block';
-        return;
-      }
-
-      // Enviar via mailto para o admin
-      const emailAdmin = 'rleitemartins@gmail.com';
-      const assunto = encodeURIComponent('[FalaQui] Troca de senha: ' + usuario + '@claudino.net');
-      const corpo = encodeURIComponent(
-        'Solicitação de troca de senha FalaQui\n\n' +
-        'Usuário: ' + usuario + '@claudino.net\n' +
-        'Nova senha solicitada: ' + nova + '\n\n' +
-        'Por favor processe esta solicitação no servidor.'
-      );
-
-      // Abre o app de email com a solicitação preenchida
-      window.location.href = 'mailto:' + emailAdmin + '?subject=' + assunto + '&body=' + corpo;
-
-      // Mostrar mensagem de sucesso
-      setTimeout(function() {
-        msgSucesso.style.display = 'block';
-        btn.textContent = 'ENVIADO ✓';
-        btn.disabled = true;
-      }, 500);
     });
   </script>
 </body>
